@@ -13,9 +13,9 @@ jobs:
     # Matrix runs the same job for each server automatically
     strategy:
       matrix:
-        host:
-          - ${{ secrets.EC2_HOST_1 }}
-          - ${{ secrets.EC2_HOST_2 }}
+        include:
+          - host: ${{ secrets.EC2_HOST_1 }}
+          - host: ${{ secrets.EC2_HOST_2 }}
 
     steps:
       # Step 1: Checkout the code
