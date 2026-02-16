@@ -1,41 +1,48 @@
-name: Deploy Website to Two EC2 Servers
+name: Deploy to Two EC2 Servers
 
 on:
   push:
     branches:
-      - master
+      - master   # changed from main to master
 
 jobs:
-  deploy:
-    name: Deploy to Multiple Servers
+  deploy-ec2-1:
     runs-on: ubuntu-latest
-
-    # Matrix runs the same job for each server automatically
-    strategy:
-      matrix:
-        include:
-          - host: ${{ secrets.EC2_HOST_1 }}
-          - host: ${{ secrets.EC2_HOST_2 }}
-
     steps:
-      # Step 1: Checkout the code
-      - name: Checkout Repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      # Step 2: Setup SSH key
-      - name: Setup SSH Key
+      - name: Setup SSH key for EC2-1
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/my-key
-          chmod 600 ~/.ssh/my-key
+          echo "${{ secrets.MY_KEY_1 }}" > ~/.ssh/my-key-1
+          chmod 600 ~/.ssh/my-key-1
 
-      # Step 3: Add EC2 host to known_hosts
-      - name: Add Host to known_hosts
-        run: ssh-keyscan -H ${{ matrix.host }} >> ~/.ssh/known_hosts
-
-      # Step 4: Deploy website using rsync
-      - name: Deploy Website to EC2
+      - name: Deploy to EC2-1
         run: |
-          echo "Deploying to ${{ matrix.host }}"
-          rsync -av --delete -e "ssh -i ~/.ssh/my-key -o StrictHostKeyChecking=no" ./ ubuntu@${{ matrix.host }}:/var/www/html/
-          echo "Deployment to ${{ matrix.host }} completed."
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/my-key-1 ubuntu@${{ secrets.EC2_HOST_1 }} '
+            cd /var/www/myapp || mkdir -p /var/www/myapp
+            git pull origin master
+            # add your deployment commands here
+          '
+
+  deploy-ec2-2:
+    runs-on: ubuntu-latest
+    needs: deploy-ec2-1   # optional: run after EC2-1
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH key for EC2-2
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.MY_KEY_2 }}" > ~/.ssh/my-key-2
+          chmod 600 ~/.ssh/my-key-2
+
+      - name: Deploy to EC2-2
+        run: |
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/my-key-2 ubuntu@${{ secrets.EC2_HOST_2 }} '
+            cd /var/www/myapp || mkdir -p /var/www/myapp
+            git pull origin master
+            # add your deployment commands here
+          '
