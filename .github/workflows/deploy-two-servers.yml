@@ -1,0 +1,41 @@
+name: Deploy Website to Two EC2 Servers
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    name: Deploy to Multiple Servers
+    runs-on: ubuntu-latest
+
+    # Matrix runs the same job for each server automatically
+    strategy:
+      matrix:
+        host:
+          - ${{ secrets.EC2_HOST_1 }}
+          - ${{ secrets.EC2_HOST_2 }}
+
+    steps:
+      # Step 1: Checkout the code
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # Step 2: Setup SSH key
+      - name: Setup SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/my-key
+          chmod 600 ~/.ssh/my-key
+
+      # Step 3: Add EC2 host to known_hosts
+      - name: Add Host to known_hosts
+        run: ssh-keyscan -H ${{ matrix.host }} >> ~/.ssh/known_hosts
+
+      # Step 4: Deploy website using rsync
+      - name: Deploy Website to EC2
+        run: |
+          echo "Deploying to ${{ matrix.host }}"
+          rsync -av --delete -e "ssh -i ~/.ssh/my-key -o StrictHostKeyChecking=no" ./ ubuntu@${{ matrix.host }}:/var/www/html/
+          echo "Deployment to ${{ matrix.host }} completed."
